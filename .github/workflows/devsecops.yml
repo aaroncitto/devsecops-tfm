@@ -1,0 +1,36 @@
+name: Pipeline DevSecOps
+
+on: [push, pull_request]
+
+jobs:
+  sast-bandit:
+    name: SAST - Analisis de Codigo (Bandit)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar entorno Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Instalar Bandit
+        run: pip install bandit
+
+      - name: Ejecutar escaneo estático SAST
+        run: bandit -r app.py
+
+  secret-scanning:
+    name: Deteccion de Secretos (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Escanear secretos con Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
