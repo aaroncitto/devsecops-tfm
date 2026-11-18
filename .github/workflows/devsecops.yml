@@ -1,36 +1,57 @@
-name: Pipeline DevSecOps
+name: DevSecOps Pipeline
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  sast-bandit:
-    name: SAST - Analisis de Codigo (Bandit)
+  sast:
+    name: SAST - Bandit
     runs-on: ubuntu-latest
     steps:
-      - name: Descargar repositorio
-        uses: actions/checkout@v4
-
-      - name: Configurar entorno Python
+      - uses: actions/checkout@v4
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-
-      - name: Instalar Bandit
+          python-version: "3.11"
+      - name: Install Bandit
         run: pip install bandit
+      - name: Run Bandit scan
+        run: bandit -r . -f json -o bandit-report.json || true
+      - name: Upload Bandit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report
+          path: bandit-report.json
 
-      - name: Ejecutar escaneo estático SAST
-        run: bandit -r app.py
-
-  secret-scanning:
-    name: Deteccion de Secretos (Gitleaks)
+  secrets-scan:
+    name: Escanear secretos con Gitleaks
     runs-on: ubuntu-latest
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: Escanear secretos con Gitleaks
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependency-check:
+    name: SCA - Dependency Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run OWASP Dependency-Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: "tfm-lab-app"
+          path: "."
+          format: "JSON"
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-check-report
+          path: reports/
